@@ -1,0 +1,250 @@
+---
+title: "Lab_1"
+output:
+  word_document: default
+  pdf_document: default
+date: "2023-02-10"
+---
+
+Завдання 3: Побудова різноманітних моделей
+
+(A) Визначити вхідні фактори для моделей;
+
+```{r}
+library(readr)
+dt_frame <- read_csv("../Spotify_final_dataset.csv")
+colnames(dt_frame)[2]='Artist_name'
+colnames(dt_frame)[3]='Song_name'
+colnames(dt_frame)[5]='Top_ten_times'
+colnames(dt_frame)[6]='Peak_position'
+colnames(dt_frame)[7]='Peak_position_times'
+colnames(dt_frame)[8]='Peak_streams'
+colnames(dt_frame)[9]='Total_streams'
+write.csv(dt_frame, "Spotify_final_dataset.csv")
+```
+
+(B) Побудувати моделі;
+a. lm(y ~ x )
+b. lm(y ~ x + I(x^2))
+c. lm(y ~ x + I(x^2) + I(x^3))
+
+(C) Накласти на графік розсіювання криві кожної моделі, використовуючи різний колір.
+
+У ролі залежної змінної будемо використовувати Position, саме за допомогою неї
+зможемо дізнатись вплив змінних на рейтинг пісні
+
+# First
+
+1
+
+x - Position (Позиція у рейтингу)
+y - Days (К-сть днів після виходу)
+
+(A)
+```{r}
+x <- dt_frame$Days
+y <- dt_frame$Position
+```
+
+
+(B)
+a.
+```{r}
+lm(y ~ x )
+```
+b.
+```{r}
+lm(y ~ x + I(x^2))
+```
+c.
+```{r}
+lm(y ~ x + I(x^2) + I(x^3))
+```
+
+(C)
+```{r}
+plot(x, y, xlab = "Days", ylab = "Position")
+curve( (6276.13 - 13.75 * x), add=TRUE, col="black", lwd = 2)
+curve( (6646.9371 -26.3736 * x + 0.0154 * x^2), add=TRUE, col="blue", lwd = 2)
+curve( (0.0154 + 0.0154 * x + 5.541e-02 * x^2 -1.738e-05  * x^3), 
+       add=TRUE, col="green", lwd = 2)
+```
+
+# Second
+
+2
+
+x - Position (Позиція у рейтингу)
+y - Top 10 xTimes (К-сть перебування у топ-10)
+
+(A)
+```{r}
+x <- dt_frame$Top_ten_times
+y <- dt_frame$Position
+```
+
+(B)
+a.
+```{r}
+lm(y ~ x )
+```
+b.
+```{r}
+lm(y ~ x + I(x^2))
+```
+c.
+```{r}
+lm(y ~ x + I(x^2) + I(x^3))
+```
+
+(C)
+```{r}
+plot(x, y, xlab = "Top 10 (xTimes)", ylab = "Position")
+curve( (5698.70 -57.56 * x), add=TRUE, col="black", lwd = 2)
+curve( (6646.9371 -134.0563 * x + 0.5489 * x^2), add=TRUE, col="blue", lwd = 2)
+curve( (5.830e+03 + -2.552e+02 * x + 2.429e+00 * x^2 -5.911e-03  * x^3), 
+       add=TRUE, col="green", lwd = 2)
+```
+
+# Third
+
+3
+
+x - Position (Позиція у рейтингу)
+y - Peak Position (Пікова позиція)
+
+(A)
+```{r}
+x <- dt_frame$Peak_position
+y <- dt_frame$Position
+```
+
+(B)
+a.
+```{r}
+lm(y ~ x )
+```
+b.
+```{r}
+lm(y ~ x + I(x^2))
+```
+c.
+```{r}
+lm(y ~ x + I(x^2) + I(x^3))
+```
+
+(C)
+```{r}
+plot(x, y, xlab = "Peak Position", ylab = "Position")
+curve( (1906.00 + 42.78 * x), add=TRUE, col="black", lwd = 2)
+curve( (1458.34956 +60.32582 * x -0.08938 * x^2), add=TRUE, col="blue", lwd = 2)
+curve( (1.171e+03 + 8.171e+01 * x -3.806e-01 * x^2 +1.019e-03  * x^3), 
+       add=TRUE, col="green", lwd = 2)
+```
+
+# Fourth
+4
+
+x - Position (Позиція у рейтингу)
+y - Peak Position (xTimes) (К-сть разів у піковій позиції)
+
+(A)
+```{r}
+dt_frame$Peak_position_times <- gsub("[(x)]","" , dt_frame$Peak_position_times ,ignore.case = TRUE)
+dt_frame$Peak_position_times <- as.numeric(dt_frame$Peak_position_times)
+x <- dt_frame$Peak_position_times
+y <- dt_frame$Position
+```
+
+(B)
+a.
+```{r}
+lm(y ~ x )
+```
+b.
+```{r}
+lm(y ~ x + I(x^2))
+```
+c.
+```{r}
+lm(y ~ x + I(x^2) + I(x^3))
+```
+
+(C)
+```{r}
+plot(x, y, xlab = "Peak Position xTimes", ylab = "Position")
+curve( (5602.6 -155.4 * x), add=TRUE, col="black", lwd = 2)
+curve( (5635.851 -357.808 * x +3.433 * x^2), add=TRUE, col="blue", lwd = 2)
+curve( (5664.89543 -665.55237 * x +15.46570 * x^2 -0.08829  * x^3), 
+       add=TRUE, col="green", lwd = 2)
+```
+
+# Fifth
+5
+
+x - Position (Позиція у рейтингу)
+y - Peak Steams (К-сть переслухувань під час піку)
+
+(A)
+```{r}
+x <- dt_frame$Peak_streams
+y <- dt_frame$Position
+```
+
+(B)
+a.
+```{r}
+lm(y ~ x )
+```
+b.
+```{r}
+lm(y ~ x + I(x^2))
+```
+c.
+```{r}
+lm(y ~ x + I(x^2) + I(x^3))
+```
+
+(C)
+```{r}
+plot(x, y, xlab = "Peak Steams", ylab = "Position")
+curve( (7.027e+03 -2.685e-03 * x), add=TRUE, col="black", lwd = 2)
+curve( (8.176e+03 -5.960e-03 * x +9.448e-10 * x^2), add=TRUE, col="blue", lwd = 2)
+curve( (9.213e+03 -9.890e-03 * x +3.366e-09 * x^2 -3.186e-16  * x^3), 
+       add=TRUE, col="green", lwd = 2)
+```
+
+# Sixth
+6
+
+x - Position (Позиція у рейтингу)
+y - Total Steams (Загальна к-сть переслухувань)
+
+(A)
+```{r}
+x <- dt_frame$Total_streams
+y <- dt_frame$Position
+```
+
+(B)
+a.
+```{r}
+lm(y ~ x )
+```
+b.
+```{r}
+lm(y ~ x + I(x^2))
+```
+c.
+```{r}
+lm(y ~ x + I(x^2) + I(x^3))
+```
+
+(C)
+```{r}
+plot(x, y, xlab = "Total Steams", ylab = "Position")
+curve( (6.109e+03 -3.096e-05 * x), add=TRUE, col="black", lwd = 2)
+curve( (6.474e+03 -6.786e-05 * x +1.017e-13 * x^2), add=TRUE, col="blue", lwd = 2)
+curve( (6.806e+03 -1.196e-04 * x +4.317e-13 * x^2 -3.783e-22 * x^3), 
+       add=TRUE, col="green", lwd = 2)
+```

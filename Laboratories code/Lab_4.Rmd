@@ -1,0 +1,219 @@
+---
+title: "Lab_2.3"
+output: word_document
+date: "2023-03-07"
+---
+
+# Лабораторна робота №2 (частина 3)
+
+# Побудова та статистичний аналіз лінійної множинної регресії.
+
+Опис dataset
+
+Назва dataset:
+Spotify Top 10000 Streamed Songs
+
+Link на dataset: 
+https://www.kaggle.com/datasets/rakkesharv/spotify-top-10000-streamed-songs
+
+Опис dataset та постановку задачі:
+Це набір даних, зібраний з веб-сайту Spotify, котрий містить потоки виконавця
+та кількість просліховувань (було взято саме топ-10000)
+Основна мета: вплив факторів на популярність пісні й дізнатись найпопулярніших
+виконавців та треки.
+
+Змінні та їх опис:
+Position - Spotify Ranking
+Artist Name - Artist Name
+Song Name - Song Name
+Days - No of days since the release of the song (Updated)
+Top 10 (xTimes) - No of times inside top 10
+Peak Position - Peak position attained
+Peak Position (xTimes) - No of times Peak position attained
+Peak Streams - Total no of streams during Peak position
+Total Streams - Total song streams 
+
+
+# Завдання 7: ANOVA
+
+```{r}
+library(readr)
+library(plotly)
+library(GGally)
+library(ggplot2)
+df <- read_csv("../Spotify_final_dataset.csv")
+
+Y <- df$Top_ten_times
+x1 <- df$Peak_position_times
+x2 <- df$Peak_streams
+x3 <- df$Days
+x4 <- df$Total_streams
+x5 <- df$Peak_position
+
+x1_scaled <- scale(x1)
+x2_scaled <- scale(x2)
+x3_scaled <- scale(x3)
+x4_scaled <- scale(x4)
+x5_scaled <- scale(x5)
+dataCen <- data.frame(scale(df[c(1,4:9)] , center = TRUE,scale = FALSE))
+
+mod2 <- lm(Y ~ x1_scaled + x2_scaled)
+mod3 <- lm(Y ~ x1_scaled + x2_scaled + x3_scaled + x4_scaled + x5_scaled)
+smod3 <- summary(mod3)
+smod2 <- summary(mod2)
+mod1 <- lm(Y ~ x1_scaled)
+smod1 <- summary(mod1)
+```
+
+(A) Використовуючи функцію simpleAnova, виведіть спрощену таблицю ANOVA для:
+
+a. моделі mod2
+```{r}
+simpleAnova <- function(object, ...) {
+  
+  # Обчислити таблицю anova
+  tab <- anova(object, ...)
+  
+  # Отримати кількість предикторів
+  p <- nrow(tab) - 1
+  
+  # Додайте рядок предикторів
+  predictorsRow <- colSums(tab[1:p, 1:2])
+  predictorsRow <- c(predictorsRow, predictorsRow[2] / predictorsRow[1])
+  
+  # F-значення
+  Fval <- predictorsRow[3] / tab[p + 1, 3]
+  pval <- pf(Fval, df1 = p, df2 = tab$Df[p + 1], lower.tail = FALSE)
+  predictorsRow <- c(predictorsRow, Fval, pval)
+  
+  # Спрощена таблиця
+  tab <- rbind(predictorsRow, tab[p + 1, ])
+  row.names(tab)[1] <- "Predictors"
+  return(tab)
+  
+}
+simpleAnova(mod2)
+```
+
+b. моделі mod3
+```{r}
+simpleAnova(mod3)
+```
+
+
+(B) Зробіть аналіз таблиць для моделей mod2 та mod3:
+
+
+# Завдання 8: Визначення адекватності моделі за коефіцієнтами 𝑹^𝟐та 𝑅Adj^2
+
+(A) Виконайте 3D візуалізацію для mod2:
+car::scatter3d(y ~ x1 + x2, fit = "linear")
+rgl::rglwidget()
+```{r}
+car::scatter3d(Y ~ x1_scaled + x2_scaled, fit = "linear")
+rgl::rglwidget()
+```
+
+(B) Обчисліть значення 𝑅^2 за допомогою формул для mod1 та mod0;
+𝑅^2 = 1 − (SSE/SST)
+```{r}
+mod0 <- lm(Y ~ 0 + x1_scaled)
+smod0 <- summary(mod0)
+
+Rsquared <- function(object, ...) {
+sse <- sum((fitted(object) - Y)^2)
+ssr <- sum((fitted(object) - mean(Y))^2)
+sst <- ssr + sse
+Rsq <- 1 - (sse/sst)
+return(Rsq)
+}
+
+Rsquared(mod0)
+Rsquared(mod1)
+```
+
+(C) Обчисліть 𝑅Adj^2 для моделі mod1 та mod0 та порівняйте з відповідними значеннями
+коефіцієнта 𝑅^2
+
+```{r}
+AdjRsquared <- function(object, param, ...) {
+sse <- sum((fitted(object) - Y)^2)
+ssr <- sum((fitted(object) - mean(Y))^2)
+sst <- ssr + sse
+ARsq <- 1 - (sse/sst)*((length(Y)-1)/((length(Y)-param-1)))
+return(ARsq)
+}
+
+AdjRsquared(mod0,2)
+AdjRsquared(mod1,1)
+```
+
+Порівняти з:
+```{r}
+Rsquared(mod0)
+Rsquared(mod1)
+```
+
+
+
+(D) Вкажіть значення коефіцієнта 𝑅^2
+та 𝑅Adj^2 для mod1, mod2 та mod3. 
+Зробіть висновок,яка модель, у вашому випадку, є найкращою.
+
+R-squared
+```{r}
+smod1$r.squared 
+smod2$r.squared 
+smod3$r.squared 
+```
+
+Adj. R-squared
+```{r}
+smod1$adj.r.squared
+smod2$adj.r.squared
+smod3$adj.r.squared 
+```
+За даними значеннями можна встановити що найкраща модель -  mod3
+
+
+# Завдання 9: Модель без вільного коефіцієнта та центровані моделі
+
+(A) Побудуйте модель без вільного коефіцієнта для 1-но факторної моделі (mod0)
+𝑌 = 0 + 𝛽1𝑋1 + 𝜀. Це можна виконати за допомогою mod0 <- lm(y ~ 0 + x1, data):
+```{r}
+mod0 <- lm(Y ~ 0 + x1)
+summary(mod0)
+```
+
+(B) Побудуйте розсіювання та накладіть відповідні прямі регресія для моделей mod1 та mod0;
+```{r}
+plot(x1, Y)
+abline(mod1, col="blue")
+abline(mod0, col="red")
+```
+
+(C) Виконаємо аналогічні обчислення для центрованого dataset (dataCen)
+
+a. Побудуйте mod0 та mod1 для dataCen;
+```{r}
+x1_cen <- dataCen$Peak_position_times
+
+mod1_cen <- lm(Y ~  x1_cen)
+mod0_cen <- lm(Y ~ 0 + x1_cen)
+summary(mod0_cen)
+```
+
+b. Обчисліть та порівняйте значення коефіцієнтів 𝑅^2 та 𝑅Adj^2 для моделей 
+mod0 та mod1 з пункту (a);
+```{r}
+summary(mod0_cen)$r.squared 
+summary(mod1_cen)$r.squared 
+
+summary(mod0_cen)$adj.r.squared 
+summary(mod1_cen)$adj.r.squared 
+
+# Побудова розсіювання та результатів mod0 та mod1
+plot(x1_cen, Y)
+abline(mod1_cen, col="blue")
+abline(mod0_cen, col="red")
+```

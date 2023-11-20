@@ -1,0 +1,273 @@
+---
+title: "Lab_3.1"
+output: word_document
+date: "2023-03-14"
+---
+
+# Лабораторна робота №3 (частина 1)
+
+# Побудова та статистичний аналіз лінійної множинної регресії.
+
+Опис dataset
+
+Назва dataset:
+Spotify Top 10000 Streamed Songs
+
+Link на dataset: 
+https://www.kaggle.com/datasets/rakkesharv/spotify-top-10000-streamed-songs
+
+Опис dataset та постановку задачі:
+Це набір даних, зібраний з веб-сайту Spotify, котрий містить потоки виконавця
+та кількість просліховувань (було взято саме топ-10000)
+Основна мета: вплив факторів на популярність пісні й дізнатись найпопулярніших
+виконавців та треки.
+
+Змінні та їх опис:
+Position - Spotify Ranking
+Artist Name - Artist Name
+Song Name - Song Name
+Days - No of days since the release of the song (Updated)
+Top 10 (xTimes) - No of times inside top 10
+Peak Position - Peak position attained
+Peak Position (xTimes) - No of times Peak position attained
+Peak Streams - Total no of streams during Peak position
+Total Streams - Total song streams 
+
+
+
+```{r}
+library(readr)
+library(plotly)
+library(GGally)
+library(ggplot2)
+df <- read_csv("../Spotify_final_dataset.csv")
+
+Y <- df$Top_ten_times
+x1 <- df$Peak_position_times
+x2 <- df$Peak_streams
+x3 <- df$Days
+x4 <- df$Total_streams
+x5 <- df$Peak_position
+
+x1_scaled <- scale(x1)
+x2_scaled <- scale(x2)
+x3_scaled <- scale(x3)
+x4_scaled <- scale(x4)
+x5_scaled <- scale(x5)
+dataCen <- data.frame(scale(df[c(1,4:9)] , center = TRUE,scale = FALSE))
+
+mod2 <- lm(Y ~ x1_scaled + x2_scaled);
+mod3 <- lm(Y ~ x1_scaled + x2_scaled + x3_scaled);
+modAll <- lm(Y ~ x1_scaled + x2_scaled + x3_scaled + x4_scaled + x5_scaled);
+modInter <- lm(Y ~ x1_scaled + x2_scaled + x3_scaled, )
+modZero <- lm(Y ~ 1)
+```
+# Завдання 1: Інформаційний критерій міри продуктивності моделі (BIC / AIC)
+
+
+(A) Оберіть 5-ть змінних, які на вашу думку мають нелінійність, та побудуйте
+скатерплот; 
+car::scatterplotMatrix(~ x1 + x2 + x3 + x4 + x5, regLine = list(col = 2),
+ col = 1, smooth = list(col.smooth = 4, col.spread = 4),
+ data = data)
+
+```{r}
+car::scatterplotMatrix( ~ x1_scaled + x2_scaled + x3_scaled 
+                        + x4_scaled + x5_scaled, regLine = list(col = 2),
+ col = 1, smooth = list(col.smooth = 4, col.spread = 4),
+ data = df)
+```
+ 
+(B) Побудуйте BIC та AIC для моделей mod2 та mod3;
+```{r}
+#BIC
+BIC(mod2)
+BIC(mod3)
+
+#AIC
+AIC(mod2)
+AIC(mod3)
+```
+
+(C) Яка модель mod2 чи mod3 краща за критерієм AIC;
+За критерієм АІС краща модель - mod3
+
+(D) Перевірте (C) за допомогою summary(_);
+```{r}
+summary(mod2)
+summary(mod3)
+```
+З аналізу можна зрозуміти що mod3 буде кращою
+
+
+# Завдання 2: Пошук накращої підмножини факторів
+
+
+(A) Зробити покращення за допомогою MASS::stepAIC моделі за всіма
+параметрами modAll, які є в dataset.
+```{r}
+modAIC <- MASS::stepAIC(modAll, k = 2)
+``` 
+
+(B) Побудувати критерій AIC
+
+ o modAIC <- MASS::stepAIC(mod, k = 2).
+```{r}
+modAIC <- MASS::stepAIC(modAll, k = 2)
+``` 
+ o Описати значення AIC на кожному етапі і вказати яка змінна
+   видаляється;
+ Етапів немає, значення АІС рівне = 46692.29
+ 
+ o Записати фінальне аналітичне представлення модель;
+```{r}
+summary(modAIC)
+``` 
+
+(C) Побудувати критерій BIC
+
+ o MASS::stepAIC(*, trace = 0, k = log(n))).
+```{r}
+modBIC <- MASS::stepAIC(modAll, k = log(nrow(df)))
+
+```
+ Етапів немає, значення ВІС = 46736.17
+ 
+ o Записати фінальне аналітичне представлення модель;
+```{r}
+summary(modBIC)
+```
+
+# Завдання 3: Пошук накращої підмножини використовуючи direction = “forward”,
+# “backward” або “both”.
+
+
+(A) Побудувати MASS::stepAIC за direction = backward:
+
+ o MASS::stepAIC (modAll, direction = "backward", k = log(n));
+```{r}
+modBack <- MASS::stepAIC (modAll, direction = "backward", k = log(nrow(df)))
+``` 
+ Етапів немає, значення рівне 46736.17
+ 
+ o Аналітично записати фінальну модель;
+```{r}
+summary(modBack)
+``` 
+ 
+ 
+(B) Побудувати MASS::stepAIC за direction = forward:
+
+ o MASS::stepAIC(modZero, direction = "forward", scope = list(lower =
+   modZero, upper = modAll), k = log(n));
+```{r}
+modFwd1 <- MASS::stepAIC(modZero, direction = "forward", scope = list(lower =
+   modZero, upper = modAll), k = log(nrow(df)))
+```   
+ 6 етапів, значення
+ 1. 60915.68 (аналіз Y ~ 1)
+ 2. 52221.39 (аналіз з використанням Y ~ Total_streams)
+ 3. 47928.5 (аналіз з використанням Y ~ Total_streams + Peak_position_times)
+ 4. 46791.18 (аналіз з використанням Y ~ Total_streams + Peak_position_times 
+ + Days)
+ 5. 46736.32 (аналіз з використанням Y ~ Total_streams + Peak_position_times 
+ + Days + Peak_streams)
+ Фінальне = 46736.17 (Використано всі змінні)
+ 
+ o Аналітично записати фінальну модель;
+```{r}
+summary(modFwd1)
+``` 
+ 
+(C) Побудувати MASS::stepAIC за direction = forward:
+
+ o MASS::stepAIC(modInter, direction = "forward", scope = list(lower =
+  modZero, upper = modAll), k = log(n));
+```{r}
+modFwd2 <- MASS::stepAIC(modInter, direction = "forward", scope = list(lower =
+  modZero, upper = modAll), k = log(nrow(df)))
+```  
+ 3 етапи, значення
+ 1. 50091.37 (аналіз Y ~ Peak_Position_times + Peak_Streams + Days)
+ 2. 46736.32 (аналіз з використанням Y ~ Peak_Position_times + Peak_Streams 
+ + Days + Total_streams)
+ Фінальне = 46736.17 (Використано всі змінні)
+ 
+ o Аналітично записати фінальну модель;
+```{r}
+summary(modFwd2)
+``` 
+ 
+ 
+ 
+(D) Побудувати MASS::stepAIC за direction = both:
+
+ o MASS::stepAIC(modInter, direction = "both", scope = list(lower =
+   modZero, upper = modAll), k = log(n));
+```{r}
+modBoth <- MASS::stepAIC(modInter, direction = "both", scope = list(lower =
+   modZero, upper = modAll), k = log(nrow(df)))
+```
+3 етапи, значення
+ 1. 50091.37 (аналіз Y ~ Peak_Position_times + Peak_Streams + Days)
+ 2. 46736.32 (аналіз з використанням Y ~ Peak_Position_times + Peak_Streams 
+ + Days + Total_streams)
+ Фінальне = 46736.17 (Використано всі змінні)
+ Не відрізнається від modFwd2
+ 
+ o Аналітично записати фінальну модель;
+```{r}
+summary(modBoth)
+```
+ 
+ Загальний висновок: серед усих варіацій множин, накйкращою виявилась з усіма 
+ змінними при собі, но можемо побачити, що модель
+ Y ~ Peak_Position_times + Peak_Streams + Days + Total_streams максимально схожа
+ за значенням за повної моделі, тому можна сказати, що Peak_position не сильно 
+ впливає на наш аналіз
+ 
+ 
+# Завдання 4: Використання якісних предикторів.
+
+
+(A) Визначення категоріальних змінних str(data);
+```{r}
+df$Peak_position_times <- as.factor(df$Peak_position_times)
+df = subset(df, select = -c(Artist_name, Song_name))
+str(df)
+# Короткий зміст лінійної моделі
+mod1 <- lm(Top_ten_times ~ ., data = df)
+summary(mod1)
+```
+Як ми бачимо очевидних категоріальних змінних в нашому датасеті немає,
+але ми можемо представити кількість раз в топі як категоріальну змінну
+Найдорожча змінна - Peak_position_times19
+
+(B) Визначення кодування фіктивної змінної contrasts(data$x);
+```{r}
+contrasts(df$Peak_position_times)
+```
+Як ми бачимо,зараз еталонна змінна Peak_position_times0
+
+(C) Зміна еталонної змінної за допомогою relevel(*)
+```{r}
+df$Peak_position_times <- relevel(df$Peak_position_times, ref='19')
+```
+
+(D) Побудова моделі з фіктивною змінною 𝑌 = 𝛽0 + 𝛽1𝑥1 + 𝛽2𝑥2 + 𝛽3𝐷;
+```{r}
+mod2 <- lm(Top_ten_times ~ Total_streams + Peak_streams+Peak_position_times, data = df )
+summary(mod2)
+```
+Як ми бачимо, коли Peak_position_times19 стала головною, то усі інші змінні дуже сильно втратили в цінності
+
+(E) Висновки: на скільки зміниться приріст середнього значення Y, який
+пов'язаний зі зміною 𝐷 = 0 на 𝐷 = 1.
+
+Для нашого випадку важко прописати кожен коєфіцієнт, оскільки у нас 31 категорія,
+але за допомогою summary(mod2) можна легко побачити на скільки змінився кожний коєфіцієнт
+```{r}
+summary(mod2)
+```
+
+

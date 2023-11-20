@@ -1,0 +1,247 @@
+---
+title: "Lab_3"
+output:
+  word_document: default
+  pdf_document: default
+date: "2023-02-27"
+---
+
+# Лабораторна робота №2 (частина 2)
+
+# Побудова та статистичний аналіз лінійної множинної регресії.
+
+Опис dataset
+
+Назва dataset:
+Spotify Top 10000 Streamed Songs
+
+Link на dataset: 
+https://www.kaggle.com/datasets/rakkesharv/spotify-top-10000-streamed-songs
+
+Опис dataset та постановку задачі:
+Це набір даних, зібраний з веб-сайту Spotify, котрий містить потоки виконавця
+та кількість просліховувань (було взято саме топ-10000)
+Основна мета: вплив факторів на популярність пісні й дізнатись найпопулярніших
+виконавців та треки.
+
+Змінні та їх опис:
+Position - Spotify Ranking
+Artist Name - Artist Name
+Song Name - Song Name
+Days - No of days since the release of the song (Updated)
+Top 10 (xTimes) - No of times inside top 10
+Peak Position - Peak position attained
+Peak Position (xTimes) - No of times Peak position attained
+Peak Streams - Total no of streams during Peak position
+Total Streams - Total song streams 
+
+# Завдання 4: Статистичні оцінки моделі за всіма параметрами
+
+(A) Вказати отримані значення
+
+```{r}
+library(readr)
+library(plotly)
+library(GGally)
+library(ggplot2)
+df <- read_csv("../Spotify_final_dataset.csv")
+
+Y <- df$Top_ten_times
+x1 <- df$Peak_position_times
+x2 <- df$Peak_streams
+x3 <- df$Days
+x4 <- df$Total_streams
+x5 <- df$Peak_position
+
+x1_scaled <- scale(x1)
+x2_scaled <- scale(x2)
+x3_scaled <- scale(x3)
+x4_scaled <- scale(x4)
+x5_scaled <- scale(x5)
+
+mod2 <- lm(Y ~ x1_scaled + x2_scaled)
+mod3 <- lm(Y ~ x1_scaled + x2_scaled + x3_scaled + x4_scaled + x5_scaled)
+smod3 <- summary(mod3)
+smod3
+```
+
+
+a. Estimate: оцінка найменших квадратів 𝛽̂𝑗
+             Estimate 
+(Intercept)  2.7136413 
+x1_scaled    5.5889867 
+x2_scaled   -0.9292734 
+x3_scaled   -8.7069453 
+x4_scaled   17.0567078 
+x5_scaled   -0.3137653 
+
+
+b. Std. Error: Оцінка стандартних помилок SÊ(𝛽̂𝑗)
+
+             Std. Error
+(Intercept)  0.07803427  
+x1_scaled    0.09851295  
+x2_scaled    0.11099889  
+x3_scaled    0.24745974 
+x4_scaled    0.27418873  
+x5_scaled    0.10197718  
+
+
+c. t value: t -статистика𝛽̂𝑗SÊ(𝛽̂𝑗)
+
+             t value     
+(Intercept)  34.774995 
+x1_scaled    56.733520  
+x2_scaled   -8.371916  
+x3_scaled   -35.185301 
+x4_scaled    62.207910 
+x5_scaled   -3.076818  
+
+
+d. Pr(>|t|): p – значення t-тесту
+
+             Pr(>|t|)
+(Intercept)  1.428494e-251
+x1_scaled    0.000000e+00
+x2_scaled    6.350423e-17
+x3_scaled    3.444178e-257
+x4_scaled    0.000000e+00
+x5_scaled    2.097332e-03
+
+
+
+(B) Значення середньо квадратичним відхиленням (Residual standard error)
+
+a. Визначити коефіцієнт середнього квадратичного відхилення за допомогою
+наступних функцій sqrt(sum(mod3$residuals^2)/ mod3$df.residual)
+
+```{r}
+RSE <- sqrt(sum(mod3$residuals^2)/ mod3$df.residual)
+RSE
+```
+
+
+b. Порівняти результат отриманий в (a) з відповідним Residual standard error в
+об’єкті summary(mod3) або за допомогою функції mod3$sigma.
+
+```{r}
+RSE
+smod3$sigma
+```
+Значення ідентичні
+
+(C) Порівняти моделі mod2 та mod3 за допомогою car::compareCoefs(mod2, mod3)
+
+```{r}
+car::compareCoefs(mod2, mod3)
+```
+
+
+
+# Завдання 5: Довірчі інтервали коефіцієнтів моделі та центрування dataset
+
+(A) Вказати довірчі інтервали для коефіцієнтів 𝛽̂𝑗 з різними інтервалами довіри
+
+a. 0.95% інтервал довіри для 𝛽̂𝑗
+```{r}
+confint(mod3, level = .95)
+```
+
+b. 0.90% інтервал довіри для 𝛽̂𝑗
+```{r}
+confint(mod3, level = .90)
+```
+
+c. 0.99% інтервал довіри для 𝛽̂𝑗
+```{r}
+confint(mod3, level = .99)
+```
+
+
+(B) Виконайте центрування dataset
+
+a. створити центрований dataCen;
+```{r}
+dataCen <- data.frame(scale(df[c(1,4:9)] , center = TRUE,scale = FALSE))
+dataCen
+
+x1_cen <- dataCen$Peak_position_times
+x2_cen <- dataCen$Peak_streams
+x3_cen <- dataCen$Days
+x4_cen <- dataCen$Total_streams
+x5_cen <- dataCen$Peak_position
+```
+
+
+b. побудуйте аналогічне моделі mod3 модель modCen для dataCen
+```{r}
+mod3 <- lm(Y ~ x1_scaled + x2_scaled + x3_scaled + x4_scaled + x5_scaled)
+summary(mod3)
+
+
+mod_cen <- lm(Y ~ x1_cen + x2_cen + x3_cen + x4_cen + x5_cen)
+summary(mod_cen)
+```
+
+
+c. порівняйте чи збігаються статистичні оцінки в обох моделях.
+Статистичні оцінки збігаються
+
+
+# Завдання 6: Прогноз
+
+(A) Задайте значення 𝑋1 = 𝑥1,… ,𝑋𝑝 = 𝑥𝑝 для прогнозування, з розрахунку для кожного 𝑖-го фактора як 𝑚𝑎𝑥(𝑋𝑖) + 10%;
+```{r}
+topPrediction <- data.frame(x1 = max(x1) + 0.1 * max(x1), 
+                              x2 = max(x2) + 0.1 * max(x2),
+                              x3 = max(x3) + 0.1 * max(x3),
+                              x4 = max(x4) + 0.1 * max(x4),
+                              x5 = max(x5) + 0.1 * max(x5))
+topPrediction
+
+top_predict <- lm(Y ~ x1 + x2 + x3 + x4 + x5)
+
+predict(top_predict, newdata = topPrediction)
+```
+
+
+(B) Прогнозування серединного значення 𝑌̂ та його довірчого інтервалу:
+
+a. 95% довірчий інтервал;
+```{r}
+predict(top_predict, newdata = topPrediction, interval = "confidence", level = 0.95)
+```
+
+
+b. 90% довірчий інтервал;
+```{r}
+predict(top_predict, newdata = topPrediction, interval = "confidence", level = 0.90)
+```
+
+
+c. 99% довірчий інтервал;
+```{r}
+predict(top_predict, newdata = topPrediction, interval = "confidence", level = 0.99)
+```
+
+
+(C) Прогнозування значення 𝑌̂ та його довірчого інтервалу при умові, що це невідоме
+значення лежить за межами досліджуваного діапазону:
+
+a. 95% довірчий інтервал;
+```{r}
+predict(top_predict, newdata = topPrediction, interval = "prediction", level = 0.95)
+```
+
+
+b. 90% довірчий інтервал;
+```{r}
+predict(top_predict, newdata = topPrediction, interval = "prediction", level = 0.90)
+```
+
+
+c. 99% довірчий інтервал;
+```{r}
+predict(top_predict, newdata = topPrediction, interval = "prediction", level = 0.99)
+```
+

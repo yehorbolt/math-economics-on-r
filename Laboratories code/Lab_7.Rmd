@@ -1,0 +1,195 @@
+---
+title: "Lab_3.3"
+output: word_document
+date: "2023-03-29"
+---
+
+# Лабораторна робота №7
+
+# Побудова та статистичний аналіз нелінійної множинної регресії. 
+
+Опис dataset
+
+Назва dataset:
+Spotify Top 10000 Streamed Songs
+
+Link на dataset: 
+https://www.kaggle.com/datasets/rakkesharv/spotify-top-10000-streamed-songs
+
+Опис dataset та постановку задачі:
+Це набір даних, зібраний з веб-сайту Spotify, котрий містить потоки виконавця
+та кількість просліховувань (було взято саме топ-10000)
+Основна мета: вплив факторів на популярність пісні й дізнатись найпопулярніших
+виконавців та треки.
+
+Змінні та їх опис:
+Position - Spotify Ranking
+Artist Name - Artist Name
+Song Name - Song Name
+Days - No of days since the release of the song (Updated)
+Top 10 (xTimes) - No of times inside top 10
+Peak Position - Peak position attained
+Peak Position (xTimes) - No of times Peak position attained
+Peak Streams - Total no of streams during Peak position
+Total Streams - Total song streams 
+
+
+```{r}
+library(readr)
+library(plotly)
+library(GGally)
+library(ggplot2)
+df <- read_csv("../Spotify_final_dataset.csv")
+
+y <- df$Top_ten_times
+x1 <- df$Peak_position_times
+x2 <- df$Peak_streams
+x3 <- df$Days
+x4 <- df$Total_streams
+x5 <- df$Peak_position
+
+x_binary <- ifelse(x5 <= 10, 'Yes', 'No') 
+x_binary
+typeof(x_binary)
+
+```
+
+Завдання 4: Нелінійні моделі за допомогою взаємодії між змінним.
+(A) Побудуйте взаємодію між змінними 𝑥𝑖 для таких моделей. Визначте яка
+краща:
+
+a) 𝑦~𝑥1 ∗ 𝑥2
+```{r}
+mod_8 <- lm(y~x1*x2)
+summary(mod_8)
+```
+
+b) 𝑦~𝑥1 ∗ 𝑥2 ∗ 𝑥3
+```{r}
+mod_9 <- lm(y~x1*x2*x3)
+summary(mod_9)
+```
+
+c) 𝑀𝐴𝑆𝑆: : 𝑠𝑡𝑒𝑝𝐴𝐼𝐶(𝑜𝑏𝑗𝑒𝑐𝑡 = 𝑙𝑚(𝑦 ~ . , 𝑑𝑎𝑡𝑎), 𝑠𝑐𝑜𝑝𝑒 = 𝑦 ~ . ^2, 𝑘 =𝑙𝑜𝑔(𝑛𝑜𝑏𝑠(𝑚𝑜𝑑𝐵𝐼𝐶)),𝑡𝑟𝑎𝑐𝑒 = 0).
+```{r}
+modAll <- lm(y ~ x1 + x2 + x3 + x4 + x5);
+modBIC <- MASS::stepAIC(modAll, k = log(nrow(df)))
+
+mod_10 <- MASS::stepAIC(object=lm(y ~ x1 + x2 + x3 + x4 + x5), scope = (y~ x1^2 + x2^2 + x3^2 + x4^2 + x5^2),
+k=log(nobs(modBIC)),trace=0)
+summary(mod_10)
+```
+
+(B) Визначте кращу модель з пукту (A)
+За допомогою summary можна побачити, що mod_10 краща
+
+#Завдання 5: Нелінійні моделі за допомогою взаємодії між неперервною та бінарною
+#змінною.
+
+(A) Побудуйте взаємодія між неперервною та бінарною змінною.
+
+a) 𝑌𝑖 = 𝛽0 + 𝛽1𝑋𝑖 + 𝛽2𝐷𝑖 + 𝑢𝑖
+```{r}
+mod_1 <- lm(y~x1 + x_binary)
+pred_1 <- predict(mod_1)
+ggplot(data = df, aes(x = x1, y = y)) +
+  geom_point()+
+  stat_smooth(method=lm)+
+  geom_smooth(aes(color = "NonBinary+Binary", y=pred_1),)
+## `geom_smooth()` using formula = 'y ~ x1 + x_binary'
+summary(mod_1)
+```
+
+b) 𝑌𝑖 = 𝛽0 + 𝛽1𝑋𝑖 + 𝛽2𝐷𝑖 + 𝛽3(𝑋𝑖 × 𝐷𝑖) + 𝑢𝑖
+```{r}
+mod_2 <- lm(y~x1 + x_binary+ x1:x_binary)
+pred_2 <- predict(mod_2)
+ggplot(data = df, aes(x = x1, y = y)) +
+  geom_point()+
+  stat_smooth(method=lm)+
+  geom_smooth(aes(color = "NonBinary+Binary+Mult", y=pred_2))
+## `geom_smooth()` using formula = 'y ~ x1 + x_binary + x1*x_binary'
+summary(mod_2)
+```
+
+c) 𝑌𝑖 = 𝛽0 + 𝛽1𝑋𝑖 + 𝛽2(𝑋𝑖 × 𝐷𝑖) + 𝑢𝑖
+```{r}
+mod_3 <- lm(y~x1 + x1:x_binary)
+pred_3 <- predict(mod_3)
+ggplot(data = df, aes(x = x1, y = y)) +
+  geom_point()+
+  stat_smooth(method=lm)+
+  geom_smooth(aes(color = "NonBinary+Mult", y=pred_2))
+## `geom_smooth()` using formula = 'y ~ x1 + x_binary + x1*x_binary'
+summary(mod_3)
+```
+
+(B) Визначте кращу модель з пукту (A)
+Найкращі моделі 1 та 2
+
+#Завдання 6: Візуальне представлення нелінійної моделі де присутня взаємодія між
+#неперервною та бінарною змінною.
+
+(A) Побудуйте розсіювання з налаштуванням груп. Варто використати такі
+налаштування
+col <- data$D + 3
+cex <- 0.5 + 0.25 * data$D
+plot(y ~ x, data = data, col = col, pch = 16, cex = cex, main = "1")
+```{r}
+col <- as.integer(x_binary) +3 
+cex <- 0.5 + 0.25*as.integer(x_binary)
+
+
+mod_lin <- lm(y~x1)
+plot(y ~ x1,  col = col, pch = 16, cex = cex, main = "A")
+abline(coef=mod_lin$coefficients, lwd=2)
+```
+
+(B) Побудуйте розсіювання з бінарною змінною.
+```{r}
+plot(y ~ x1,  col = col, pch = 16, cex = cex, main = "B")
+abline(a=mod_1$coefficients[1],b=mod_1$coefficients[2],col=3, lwd=2)
+abline(a=mod_1$coefficients[1] + mod_1$coefficients[3],b=mod_1$coefficients[2],col=4, lwd=2)
+```
+
+(C) Предиктор, фiктивна змiнна та їх взаємодiя.
+𝑌 = 𝛽0 + 𝛽1𝑋 + 𝛽2𝐷 + 𝛽3(𝑋 ⋅ 𝐷) + 𝜀
+```{r}
+plot(y ~ x1,  col = col, pch = 16, cex = cex, main = "C")
+abline(a=mod_2$coefficients[1],b=mod_2$coefficients[2],col=3, lwd=2)
+abline(a=mod_2$coefficients[1] + mod_2$coefficients[3],
+       b=mod_2$coefficients[2] +0,col=4, lwd=2)
+```
+
+(D) Фіктивна змінна, присутня лише у взаємодії
+𝑌 = 𝛽0 + 𝛽1𝑋 + 𝛽2(𝑋 ⋅ 𝐷) + 𝜀
+```{r}
+plot(y ~ x1,  col = col, pch = 16, cex = cex, main = "D")
+abline(a=mod_3$coefficients[1],b=mod_3$coefficients[2],col=3, lwd=2)
+abline(a=mod_3$coefficients[1],
+       b=mod_3$coefficients[2] +0,col=4, lwd=2)
+```
+
+(E) Фіктивна змінна та відсутній предиктор𝑌 = 𝛽0 + 𝛽1𝐷 + 𝜀
+```{r}
+mod_4 <- lm(y~x_binary)
+plot(y ~ x1,  col = col, pch = 16, cex = cex, main = "E")
+abline(a=mod_4$coefficients[1],b=0,col=3, lwd=2)
+abline(a=mod_4$coefficients[1]+mod_4$coefficients[2], b=0,col=4, lwd=2)
+```
+
+(F) Фiктивна змiнна та взаємодiя з предиктором.𝑌 = 𝛽0 + 𝛽1𝐷 + 𝛽2(𝑋 ⋅ 𝐷) + 𝜀
+```{r}
+mod_5 <- lm(y~x_binary+ x1:x_binary)
+plot(y ~ x1,  col = col, pch = 16, cex = cex, main = "F")
+abline(a=mod_5$coefficients[1],b=0,col=3, lwd=2)
+abline(a=mod_5$coefficients[1]+mod_5$coefficients[2], b=0,col=4, lwd=2)
+```
+
+(G) Взаємодiя фiктивної змiнної з предиктором.𝑌 = 𝛽0 + 𝛽1(𝑋 ⋅ 𝐷) + 𝜀
+```{r}
+mod_6 <- lm(y ~ x1:x_binary)
+plot(y ~ x1,  col = col, pch = 16, cex = cex, main = "G")
+abline(a=mod_6$coefficients[1],b=0,col=3, lwd=2)
+abline(a=mod_6$coefficients[1], b=0, col=4, lwd=2)
+```

@@ -1,0 +1,328 @@
+---
+title: "Lab_3.4"
+output: word_document
+date: "2023-04-05"
+---
+
+# Лабораторна робота №8
+
+# Модельна діагностика. 
+
+Опис dataset
+
+Назва dataset:
+Spotify Top 10000 Streamed Songs
+
+Link на dataset: 
+https://www.kaggle.com/datasets/rakkesharv/spotify-top-10000-streamed-songs
+
+Опис dataset та постановку задачі:
+Це набір даних, зібраний з веб-сайту Spotify, котрий містить потоки виконавця
+та кількість просліховувань (було взято саме топ-10000)
+Основна мета: вплив факторів на популярність пісні й дізнатись найпопулярніших
+виконавців та треки.
+
+Змінні та їх опис:
+Position - Spotify Ranking
+Artist Name - Artist Name
+Song Name - Song Name
+Days - No of days since the release of the song (Updated)
+Top 10 (xTimes) - No of times inside top 10
+Peak Position - Peak position attained
+Peak Position (xTimes) - No of times Peak position attained
+Peak Streams - Total no of streams during Peak position
+Total Streams - Total song streams 
+
+
+```{r}
+library(car)
+library(readr)
+library(plotly)
+library(GGally)
+library(ggplot2)
+df <- read_csv("../Spotify_final_dataset.csv")
+
+y <- df$Top_ten_times
+x1 <- df$Peak_position_times
+x2 <- df$Peak_streams
+x3 <- df$Days
+x4 <- df$Total_streams
+x5 <- df$Position
+x6 <- df$Peak_position
+
+mod <- lm(y ~ x1 + x2 + x3 + x4);
+mod_1 <- lm(y ~ x1 + x2 + x3);
+
+summary(mod)
+summary(mod_1)
+```
+
+# Завдання 1: Перевірити дані на лінійність
+
+# mod 
+
+(A) Представити графічно plot(*, 1);
+```{r}
+plot(mod,1)
+```
+
+(B) Побудувати залежності 𝑌~𝑥𝑖, 𝑖 = 1, … ,4
+termplot(mod, partial.resid = TRUE)
+```{r}
+par(mfrow = c(2, 2))
+termplot(mod, partial.resid = TRUE)
+```
+
+(C) Вказати які змінні потребують корекції;
+Найбільше потребує зміна змінної х1
+
+
+# Завдання 2: Перевірити дані на нормальність
+
+(A) Представити графічно plot(*, 2);
+```{r}
+plot(mod,2)
+```
+
+(B) тест Шапіро-Вілька
+```{r}
+new_df <- df[sample(nrow(df), nrow(df)*0.45),]
+ny <- new_df$Top_ten_times
+nx1 <- new_df$Peak_position_times
+nx2 <- new_df$Peak_streams
+nx3 <- new_df$Days
+nx4 <- new_df$Total_streams
+
+nmod <- lm(ny ~ nx1 + nx2 + nx3 + nx4);
+
+shapiro.test(nmod$residuals)
+```
+Через обмеження у розмірі вибірки прийшлось зменшити розмір до 45% від загального розміру.
+
+(C) тест Лілліфорса
+```{r}
+nortest::lillie.test(mod$residuals)
+```
+
+(D) Виконати перетворення Yeo-Johnson для змінної, яка 𝑥𝑖 яка на ваш погляд не є
+нормально розподілена
+```{r}
+YJ <- car::powerTransform(lm(x1 ~ 1), family = "yjPower")
+(lambdaYJ <- YJ$lambda)
+
+x1Transf <- car::yjPower(U = x1, lambda = lambdaYJ)
+```
+
+(E) Побудуйте гістограми для 𝑥𝑖 до трансформації і після;
+```{r}
+par(mfrow = c(1, 2))
+hist(x1, freq = FALSE, breaks = 10)
+hist(x1Transf, freq = FALSE, breaks = 10)
+```
+
+(F) Виконайте твансформацію Yeo-Johnson для Y (YTransf);
+```{r}
+YTransf <- car::yjPower(U = y, lambda = lambdaYJ)
+```
+
+(G) Порівняйте plot(*, 2) для Y та YTransf
+```{r}
+par(mfrow = c(1, 2))
+plot(lm(y ~ x1 + x2 + x3 + x4), 2)
+plot(lm(YTransf ~ x1 + x2 + x3 + x4),2)
+```
+Дійсно графік став трохи кращим.
+
+
+# Завдання 3: Перевірити дані на гомоскедастичність
+
+(A) Представити графічно plot(*, 3);
+```{r}
+plot(mod, 3)
+```
+
+(B) Для перевірки використати тест Брейша – Пагана;
+```{r}
+car::ncvTest(mod)
+```
+Гомоскедатичність відкудуємо
+
+(C) Виконати перетворення для залежної змінної та перевірки за тестом Брейша –
+Пагана:
+
+o Y1 <- log(abs(Y));
+```{r}
+Y1 <- log(abs(y))
+# У У1 вийшло багато -inf -> замінюємо на 0
+Y1[Y1 == -Inf] <- 0
+mod_log_1 <- lm(Y1 ~ x1 + x2 + x3 + x4)
+car::ncvTest(mod_log_1)
+plot(mod_log_1, 3)
+```
+
+o Y2 <- sqrt(abs(Y));
+```{r}
+Y2 <- sqrt(abs(y))
+mod_sqrt_1 <- lm(Y2 ~ x1 + x2 + x3 + x4)
+car::ncvTest(mod_sqrt_1)
+plot(mod_sqrt_1, 3)
+```
+Краще не стало, багато розспипано по проміжку
+
+o Трансформація Бокса-Кокса Y3 <- log(Y + m));
+```{r}
+delta <- 6
+m <- -min(y) + delta
+Y3 <- I(log(y + m))
+mod_log2_1 <- lm(Y3 ~ x1 + x2 + x3 + x4)
+car::ncvTest(mod_log2_1)
+plot(mod_log2_1, 3)
+```
+Не те що нам потрібно, значення розсписані по проміжку
+
+o Трансформація за Йо-Джонсоном Y4;
+```{r}
+YJ <- car::powerTransform(lm(y ~ x1 + x2 + x3 + x4), family = "yjPower")
+(lambdaYJ <- YJ$lambda)
+Y4 <- car::yjPower(U = y, lambda = lambdaYJ)
+mod_YJ_1<- lm(Y4 ~ x1 + x2 +x3 + x4)
+car::ncvTest(mod_YJ_1)
+plot(mod_YJ_1, 3)
+```
+Пташка. Но все ж не схоже на те, що потрібно нам (значення на проміжку 
+від [..0.0; ~0.25]) сходиться з лінією
+
+В фінальному висновку до цього завдання можна вказати, що найкраще 
+показала себе YJ трансформація
+
+
+# Завдання 4: Перевірити дані на незалежність.
+
+(A) Представити графічно та перевірити за plot(*$residuals, type = "o");
+```{r}
+plot(mod$residuals, type = "o")
+```
+
+(B) перевірити за lag.plot(*$residuals, lags = 1, do.lines = FALSE)
+```{r}
+lag.plot(mod$residuals, lags = 1, do.lines = FALSE)
+```
+
+(C) перевірити за cor(*$residuals[-1], mod$residuals[-length(mod$residuals)])
+```{r}
+cor(mod$residuals[-1], mod$residuals[-length(mod$residuals)])
+```
+Значення кореляції невід'ємне, але мале
+
+(D) Для перевірки використати тест Дарбiна – Ватсона;
+```{r}
+car::durbinWatsonTest(mod)
+```
+
+
+# Завдання 5: Перевірити дані на мультиколінеарність.
+
+(A) Представити залежність даних таблично round(cor(data), 2)
+```{r}
+round(cor(df[, c(1, 4:9)]), 2)
+```
+Position залежить від Peak_Position, Days від Total_Streams, Peak_Position_times від Top_Ten_Times.
+
+(B) Графічно corrplot::corrplot(cor(data), addCoef.col = "grey");
+```{r}
+corrplot::corrplot(cor(df[, c(1, 4:9)]), addCoef.col = "grey")
+```
+"Чому не використовуються всі змінні?", на це є відповідь. Artist_Name та Song_Name є символьним типом й більшість з них унікальні (99%), тому їх можна відкинути (до того ж їх не використати у cor й тп)
+Залежні змінні були вказані у минулому задванні
+
+(C) Обчислити коефіцієнт Variance Inflation Factor (VIF) для моделі mod;
+```{r}
+vif(mod)
+```
+
+(D) Обчислити коефіцієнт VIF в моделі mod_1;
+```{r}
+vif(mod_1)
+```
+
+(E) Порівняти моделі за car::compareCoefs(mod, mod_1)
+```{r}
+car::compareCoefs(mod, mod_1)
+```
+Коефіціенти відрізняються.
+
+
+# Завдання 6: Перевірити дані на наявність аномальних чи високоефективних точок.
+
+(A) Представити графічно plot(*, 5);
+```{r}
+plot(mod, 5)
+```
+
+(B) Видалити аномальну точку та побудувати plot(*, 5);
+```{r}
+
+# обчислення медіани та міжквартильного діапазону для всіх змінних
+median_x1 <- median(df$Peak_position_times)
+iqr_x1 <- IQR(df$Peak_position_times)
+lower_x1 <- median_x1 - 1.5 * iqr_x1
+upper_x1 <- median_x1 + 1.5 * iqr_x1
+
+median_x2 <- median(df$Peak_streams)
+iqr_x2 <- IQR(df$Peak_streams)
+lower_x2 <- median_x2 - 1.5 * iqr_x2
+upper_x2 <- median_x2 + 1.5 * iqr_x2
+
+median_x3 <- median(df$Days)
+iqr_x3 <- IQR(df$Days)
+lower_x3 <- median_x3 - 1.5 * iqr_x3
+upper_x3 <- median_x3 + 1.5 * iqr_x3
+
+median_x4 <- median(df$Total_streams)
+iqr_x4 <- IQR(df$Total_streams)
+lower_x4 <- median_x4 - 1.5 * iqr_x4
+upper_x4 <- median_x4 + 1.5 * iqr_x4
+
+
+# знаходження аномальних точок для кожної змінної
+anomaly_x1 <- which(df$Peak_position_times < lower_x1 | df$Peak_position_times > upper_x1)
+anomaly_x2 <- which(df$Peak_streams < lower_x2 | df$Peak_streams > upper_x2)
+anomaly_x3 <- which(df$Days < lower_x3 |  df$Days > upper_x3)
+anomaly_x4 <- which(df$Total_streams < lower_x4 | df$Total_streams > upper_x4)
+
+# об'єднання всіх аномальних точок
+anomaly <- unique(c(anomaly_x1, anomaly_x2, anomaly_x3, anomaly_x4))
+
+# видалення аномальних точок
+dfn2 <- df[-anomaly, ]
+
+n2y <- dfn2$Top_ten_times
+n2x1 <- dfn2$Peak_position_times
+n2x2 <- dfn2$Peak_streams
+n2x3 <- dfn2$Days
+n2x4 <- dfn2$Total_streams
+
+mod_normalized <- lm(n2y~n2x1+n2x2+n2x3+n2x4)
+plot(mod_normalized, 5)
+```
+Яка краса, після видалення аномальних точок графік майже ідеальний
+
+(C) Видалити високоефективну точку та побудувати plot(*, 5);
+```{r}
+# обчислення Cook's distance для кожної точки
+cooksd <- cooks.distance(mod)
+# знайти точки з високими значеннями Cook's distance
+high_cooksd <- which(cooksd > 1)
+# видалення точок з високими значеннями Cook's distance
+dfn3 <- df[-high_cooksd, ]
+
+ny <- dfn3$Top_ten_times
+nx1 <- dfn3$Peak_position_times
+nx2 <- dfn3$Peak_streams
+nx3 <- dfn3$Days
+nx4 <- dfn3$Total_streams
+
+mod_normalized <- lm(ny~nx1+nx2+nx3+nx4)
+plot(mod_normalized, 5)
+```
+Після видалення високоефективних точок графік став виглядати краще.
